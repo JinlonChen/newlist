@@ -69,7 +69,28 @@
     </style>
 </head>
 <body class="min-h-screen py-8 px-4 md:px-8">
-    <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8">
+    <!-- 密码保护模态框 -->
+    <div id="passwordModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 fade-in">
+            <div class="text-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">请输入密码</h2>
+                <p class="text-gray-600 mt-2">此页面需要密码访问</p>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <input type="password" id="passwordInput" placeholder="请输入密码" 
+                        class="w-full px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary rounded-lg">
+                </div>
+                <div id="passwordError" class="text-danger text-sm hidden">密码错误，请重试</div>
+                <button id="submitPasswordBtn" class="w-full bg-primary hover:bg-primary/90 text-white font-medium py-2.5 px-4 rounded-lg transition-all duration-200">
+                    确认
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 主内容区域 (默认隐藏，密码验证后显示) -->
+    <div id="mainContent" class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8 hidden">
         <header class="mb-8 text-center">
             <h1 class="text-2xl md:text-3xl font-bold text-gray-800">TODO 清单</h1>
             <p class="text-secondary mt-2">高效管理您的日常计划和待办事项</p>
@@ -255,55 +276,95 @@
     </div>
     
     <script>
-        // DOM元素
-        const taskTypeSelect = document.getElementById('taskType');
-        const datePicker = document.getElementById('datePicker');
-        const githubBtn = document.getElementById('githubBtn');
-        const githubSyncModule = document.getElementById('githubSyncModule');
-        const closeGithubBtn = document.getElementById('closeGithubBtn');
-        const taskInput = document.getElementById('taskInput');
-        const addTaskBtn = document.getElementById('addTaskBtn');
-        const taskList = document.getElementById('taskList');
-        const emptyState = document.getElementById('emptyState');
-        const taskListTitle = document.getElementById('taskListTitle');
-        const dailySummary = document.getElementById('dailySummary');
-        const saveSummaryBtn = document.getElementById('saveSummaryBtn');
-        const editModal = document.getElementById('editModal');
-        const closeEditModalBtn = document.getElementById('closeEditModalBtn');
-        const cancelEditBtn = document.getElementById('cancelEditBtn');
-        const editForm = document.getElementById('editForm');
-        const githubToken = document.getElementById('githubToken');
-        const gistId = document.getElementById('gistId');
-        const syncToGithubBtn = document.getElementById('syncToGithubBtn');
-        const syncFromGithubBtn = document.getElementById('syncFromGithubBtn');
-        const syncStatus = document.getElementById('syncStatus');
-        const autoSyncToggle = document.getElementById('autoSyncToggle');
-        const toggleGoalsBtn = document.getElementById('toggleGoalsBtn');
-        const monthlyGoalsContainer = document.getElementById('monthlyGoalsContainer');
-        const goalsList = document.getElementById('goalsList');
+        // 密码验证功能
+        const passwordModal = document.getElementById('passwordModal');
+        const passwordInput = document.getElementById('passwordInput');
+        const submitPasswordBtn = document.getElementById('submitPasswordBtn');
+        const passwordError = document.getElementById('passwordError');
+        const mainContent = document.getElementById('mainContent');
         
-        // 存储键名
-        const STORAGE_KEY = 'new-schedule-app-data';
-        const SYNC_SETTINGS_KEY = 'github-sync-settings';
-        const MONTHLY_GOALS_KEY = 'monthly-goals';
+        // 正确密码
+        const CORRECT_PASSWORD = '1111';
         
-        // 自动同步相关变量
-        let autoSyncInterval = null;
-        const AUTO_SYNC_INTERVAL_MINUTES = 15; // 每15分钟自动同步一次
+        // 验证密码
+        function validatePassword() {
+            const enteredPassword = passwordInput.value;
+            
+            if (enteredPassword === CORRECT_PASSWORD) {
+                // 密码正确，显示主内容，隐藏密码模态框
+                passwordModal.classList.add('hidden');
+                mainContent.classList.remove('hidden');
+                passwordError.classList.add('hidden');
+                
+                // 初始化应用
+                initApp();
+            } else {
+                // 密码错误，显示错误信息
+                passwordError.classList.remove('hidden');
+                passwordInput.value = '';
+                passwordInput.focus();
+            }
+        }
         
-        // 初始化日期为今天
-        const today = new Date();
-        const formattedToday = formatDate(today);
-        datePicker.value = formattedToday;
+        // 提交密码事件
+        submitPasswordBtn.addEventListener('click', validatePassword);
         
-        // 初始化
-        document.addEventListener('DOMContentLoaded', () => {
+        // 按Enter键提交密码
+        passwordInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                validatePassword();
+            }
+        });
+        
+        // 应用初始化函数
+        function initApp() {
+            // DOM元素
+            const taskTypeSelect = document.getElementById('taskType');
+            const datePicker = document.getElementById('datePicker');
+            const githubBtn = document.getElementById('githubBtn');
+            const githubSyncModule = document.getElementById('githubSyncModule');
+            const closeGithubBtn = document.getElementById('closeGithubBtn');
+            const taskInput = document.getElementById('taskInput');
+            const addTaskBtn = document.getElementById('addTaskBtn');
+            const taskList = document.getElementById('taskList');
+            const emptyState = document.getElementById('emptyState');
+            const taskListTitle = document.getElementById('taskListTitle');
+            const dailySummary = document.getElementById('dailySummary');
+            const saveSummaryBtn = document.getElementById('saveSummaryBtn');
+            const editModal = document.getElementById('editModal');
+            const closeEditModalBtn = document.getElementById('closeEditModalBtn');
+            const cancelEditBtn = document.getElementById('cancelEditBtn');
+            const editForm = document.getElementById('editForm');
+            const githubToken = document.getElementById('githubToken');
+            const gistId = document.getElementById('gistId');
+            const syncToGithubBtn = document.getElementById('syncToGithubBtn');
+            const syncFromGithubBtn = document.getElementById('syncFromGithubBtn');
+            const syncStatus = document.getElementById('syncStatus');
+            const autoSyncToggle = document.getElementById('autoSyncToggle');
+            const toggleGoalsBtn = document.getElementById('toggleGoalsBtn');
+            const monthlyGoalsContainer = document.getElementById('monthlyGoalsContainer');
+            const goalsList = document.getElementById('goalsList');
+            
+            // 存储键名
+            const STORAGE_KEY = 'new-schedule-app-data';
+            const SYNC_SETTINGS_KEY = 'github-sync-settings';
+            const MONTHLY_GOALS_KEY = 'monthly-goals';
+            
+            // 自动同步相关变量
+            let autoSyncInterval = null;
+            const AUTO_SYNC_INTERVAL_MINUTES = 15; // 每15分钟自动同步一次
+            
+            // 初始化日期为今天
+            const today = new Date();
+            const formattedToday = formatDate(today);
+            datePicker.value = formattedToday;
+            
+            // 初始化
             loadTasks();
             loadSummary();
             loadSyncSettings();
             loadMonthlyGoals();
             initAutoSync();
-        });
         
         // 格式化日期
         function formatDate(date) {
@@ -1010,12 +1071,12 @@
             }
         }
         
-        // 事件监听器
-        taskTypeSelect.addEventListener('change', loadTasks);
-        datePicker.addEventListener('change', () => {
-            loadTasks();
-            loadSummary();
-        });
+            // 事件监听器
+            taskTypeSelect.addEventListener('change', loadTasks);
+            datePicker.addEventListener('change', () => {
+                loadTasks();
+                loadSummary();
+            });
         
         // 日期导航按钮事件
         document.getElementById('prevDayBtn').addEventListener('click', () => {
@@ -1117,12 +1178,13 @@
         // 当月目标展开/收起事件
         toggleGoalsBtn.addEventListener('click', toggleMonthlyGoals);
         
-        // 点击模态框外部关闭
-        window.addEventListener('click', (e) => {
-            if (e.target === editModal) {
-                closeEditModal();
-            }
-        });
+            // 点击模态框外部关闭
+            window.addEventListener('click', (e) => {
+                if (e.target === editModal) {
+                    closeEditModal();
+                }
+            });
+        }
     </script>
 </body>
 </html>
