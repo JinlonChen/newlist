@@ -374,11 +374,11 @@
             return `${year}-${month}-${day}`;
         }
         
-        // 获取当前月份的键名
+        // 获取当前月份的键名（基于日期选择器中的日期）
         function getCurrentMonthKey() {
-            const now = new Date();
-            const year = now.getFullYear();
-            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const selectedDate = new Date(datePicker.value);
+            const year = selectedDate.getFullYear();
+            const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
             return `${year}-${month}`;
         }
         
@@ -1076,6 +1076,7 @@
             datePicker.addEventListener('change', () => {
                 loadTasks();
                 loadSummary();
+                loadMonthlyGoals();  // 添加这一行来更新当月目标
             });
         
         // 日期导航按钮事件
@@ -1085,6 +1086,7 @@
             datePicker.value = formatDate(currentDate);
             loadTasks();
             loadSummary();
+            loadMonthlyGoals();  // 添加这一行来更新当月目标
         });
         
         document.getElementById('nextDayBtn').addEventListener('click', () => {
@@ -1093,6 +1095,7 @@
             datePicker.value = formatDate(currentDate);
             loadTasks();
             loadSummary();
+            loadMonthlyGoals();  // 添加这一行来更新当月目标
         });
         
         // 清除日期按钮事件
