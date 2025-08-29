@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TODO 清单</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <!-- 配置Tailwind -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#64748b',
+                        success: '#10b981',
+                        danger: '#ef4444',
+                        warning: '#f59e0b'
+                    },
+                    boxShadow: {
+                        'card': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
+                    }
+                },
+            }
+        }
+    </script>
+    
+    <!-- 自定义工具类 -->
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .task-completed {
+                text-decoration: line-through;
+                color: #9ca3af;
+            }
+        }
+    </style>
+    
+    <style>
+        body {
+            background-color: #f8fafc;
+            background-image: linear-gradient(to right, rgba(59, 130, 246, 0.05) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(59, 130, 246, 0.05) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        
+        .task-item {
+            transition: all 0.2s ease;
+        }
+        
+        .task-item:hover {
+            background-color: #f3f4f6;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="min-h-screen py-8 px-4 md:px-8">
+    <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-lg p-6 md:p-8">
+        <header class="mb-8 text-center">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-800">TODO 清单</h1>
+            <p class="text-secondary mt-2">高效管理您的日常计划和待办事项</p>
+        </header>
+        
+        <!-- 第一行模块 -->
+        <div class="flex flex-col md:flex-row gap-4 mb-6">
+            <!-- 下拉菜单模块 -->
+            <div class="flex-1">
+                <label for="taskType" class="block text-sm font-medium text-gray-700 mb-1">任务类型</label>
+                <div class="relative">
+                    <select id="taskType" class="block w-full pl-3 pr-10 py-2.5 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm rounded-lg">
+                        <option value="dayTodo">Day Todo</option>
+                        <option value="todo">待办事项</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                        <i class="fa fa-chevron-down text-xs"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 日期选择模块 -->
+            <div class="flex-1">
+                <label for="datePicker" class="block text-sm font-medium text-gray-700 mb-1">选择日期</label>
+                <div class="relative flex items-center">
+                    <button id="prevDayBtn" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 z-10">
+                        <i class="fa fa-chevron-left"></i>
+                    </button>
+                    <input type="date" id="datePicker" class="block w-full pl-10 pr-10 py-2.5 text-base border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary sm:text-sm rounded-lg">
+                    <button id="nextDayBtn" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 z-10">
+                        <i class="fa fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- GitHub按钮 -->
+            <div class="flex-1 flex items-end">
+                <button id="githubBtn" class="w-full bg-gray-800 hover:bg-gray-700 text-white font-medium py-2.5 px-4 rounded-lg transition-all duration-200 flex items-center justify-center">
+                    <i class="fa fa-github mr-2"></i>GitHub同步
+                </button>
+            </div>
+        </div>
+        
+        <!-- GitHub同步模块 (默认隐藏) -->
+        <div id="githubSyncModule" class="hidden bg-gray-50 p-4 rounded-lg mb-6 fade-in">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="font-medium text-gray-800">GitHub同步设置</h3>
+                <div class="flex items-center">
+                    <span class="text-sm text-gray-600 mr-2">自动同步</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="autoSyncToggle">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <button id="closeGithubBtn" class="text-gray-500 hover:text-gray-700 ml-4">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="githubToken" class="block text-sm font-medium text-gray-700 mb-1">GitHub Token</label>
+                    <input type="password" id="githubToken" placeholder="输入GitHub Token" class="block w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary rounded-lg">
+                </div>
+                <div>
+                    <label for="gistId" class="block text-sm font-medium text-gray-700 mb-1">Gist ID</label>
+                    <input type="text" id="gistId" placeholder="输入Gist ID" class="block w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary rounded-lg">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4 mt-4">
+                <button id="syncToGithubBtn" class="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 flex items-center justify-center">
+                    <i class="fa fa-upload mr-2"></i>上传数据
+                </button>
+                <button id="syncFromGithubBtn" class="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 flex items-center justify-center">
+                    <i class="fa fa-download mr-2"></i>下载数据
+                </button>
+            </div>
+            <div id="syncStatus" class="mt-3 text-sm text-center hidden"></div>
+        </div>
+        
+        <!-- 第二行：当月目标模块 -->
+        <div class="mb-6">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="font-medium text-gray-800">当月目标</h3>
+                <button id="toggleGoalsBtn" class="text-primary hover:text-primary/80 text-sm">
+                    <i class="fa fa-chevron-down mr-1"></i>展开/收起
+                </button>
+            </div>
+            <div id="monthlyGoalsContainer" class="bg-gray-50 p-4 rounded-lg">
+                <div id="goalsList" class="space-y-3">
+                    <!-- 目标输入框将通过JavaScript动态生成 -->
+                    <div class="goal-item flex items-center">
+                        <input type="text" class="goal-input flex-1 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary rounded-lg" placeholder="添加当月目标...">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 任务输入框 -->
+        <div class="mb-6">
+            <div class="flex items-center gap-3">
+                <div class="relative flex-1">
+                    <input type="text" id="taskInput" placeholder="输入新的任务..." class="w-full pl-10 pr-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary rounded-lg">
+                    <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
+                        <i class="fa fa-plus-circle"></i>
+                    </div>
+                </div>
+                <button id="addTaskBtn" class="bg-primary hover:bg-primary/90 text-white font-medium py-2.5 px-4 rounded-lg transition-all duration-200 flex-shrink-0">
+                    添加
+                </button>
+            </div>
+        </div>
+        
+        <!-- 任务列表 -->
+        <div class="mb-6">
+            <h2 id="taskListTitle" class="text-lg font-semibold text-gray-800 mb-3">今日日程</h2>
+            <div id="taskList" class="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                <!-- 任务列表将通过JavaScript动态生成 -->
+                <div id="emptyState" class="text-center py-10 text-gray-500">
+                    <i class="fa fa-calendar-o text-4xl mb-3"></i>
+                    <p>暂无任务</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 日期总结输入框 -->
+        <div>
+            <label for="dailySummary" class="block text-sm font-medium text-gray-700 mb-1">今日总结</label>
+            <textarea id="dailySummary" rows="3" placeholder="记录今天的心得体会..." class="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary rounded-lg"></textarea>
+            <div class="mt-3 flex justify-end">
+                <button id="saveSummaryBtn" class="bg-secondary hover:bg-secondary/90 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200">
+                    保存总结
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 编辑任务模态框 (默认隐藏) -->
+    <div id="editModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 hidden fade-in">
+        <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-800">编辑任务</h3>
+                <button id="closeEditModalBtn" class="text-gray-400 hover:text-gray-600">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            <form id="editForm">
+                <input type="hidden" id="editTaskId">
+                <input type="hidden" id="editTaskType">
+                
+                <div class="mb-4">
+                    <label for="editTaskContent" class="block text-sm font-medium text-gray-700 mb-1">任务内容</label>
+                    <input type="text" id="editTaskContent" class="w-full px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary rounded-lg">
+                </div>
+                
+                <div class="mb-4">
+                    <label for="editTaskDate" class="block text-sm font-medium text-gray-700 mb-1">日期</label>
+                    <input type="date" id="editTaskDate" class="w-full px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary rounded-lg">
+                    <button id="removeTaskDateBtn" class="mt-1 text-sm text-primary hover:text-primary/80">没有日期</button>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="editTaskDescription" class="block text-sm font-medium text-gray-700 mb-1">描述 (可选)</label>
+                    <textarea id="editTaskDescription" rows="2" placeholder="添加更多细节..." class="w-full px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary rounded-lg"></textarea>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="flex items-center">
+                        <input type="checkbox" id="editTaskCompleted" class="form-checkbox h-5 w-5 text-primary">
+                        <span class="ml-2 text-sm text-gray-700">已完成</span>
+                    </label>
+                </div>
+                
+                <div class="flex gap-3">
+                    <button type="submit" class="flex-1 bg-primary hover:bg-primary/90 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200">
+                        保存修改
+                    </button>
+                    <button type="button" id="cancelEditBtn" class="flex-1 border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium py-2 px-4 rounded-lg transition-all duration-200">
+                        取消
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        // DOM元素
+        const taskTypeSelect = document.getElementById('taskType');
+        const datePicker = document.getElementById('datePicker');
+        const githubBtn = document.getElementById('githubBtn');
+        const githubSyncModule = document.getElementById('githubSyncModule');
+        const closeGithubBtn = document.getElementById('closeGithubBtn');
+        const taskInput = document.getElementById('taskInput');
+        const addTaskBtn = document.getElementById('addTaskBtn');
+        const taskList = document.getElementById('taskList');
+        const emptyState = document.getElementById('emptyState');
+        const taskListTitle = document.getElementById('taskListTitle');
+        const dailySummary = document.getElementById('dailySummary');
+        const saveSummaryBtn = document.getElementById('saveSummaryBtn');
+        const editModal = document.getElementById('editModal');
+        const closeEditModalBtn = document.getElementById('closeEditModalBtn');
+        const cancelEditBtn = document.getElementById('cancelEditBtn');
+        const editForm = document.getElementById('editForm');
+        const githubToken = document.getElementById('githubToken');
+        const gistId = document.getElementById('gistId');
+        const syncToGithubBtn = document.getElementById('syncToGithubBtn');
+        const syncFromGithubBtn = document.getElementById('syncFromGithubBtn');
+        const syncStatus = document.getElementById('syncStatus');
+        const autoSyncToggle = document.getElementById('autoSyncToggle');
+        const toggleGoalsBtn = document.getElementById('toggleGoalsBtn');
+        const monthlyGoalsContainer = document.getElementById('monthlyGoalsContainer');
+        const goalsList = document.getElementById('goalsList');
+        
+        // 存储键名
+        const STORAGE_KEY = 'new-schedule-app-data';
+        const SYNC_SETTINGS_KEY = 'github-sync-settings';
+        const MONTHLY_GOALS_KEY = 'monthly-goals';
+        
+        // 自动同步相关变量
+        let autoSyncInterval = null;
+        const AUTO_SYNC_INTERVAL_MINUTES = 15; // 每15分钟自动同步一次
+        
+        // 初始化日期为今天
+        const today = new Date();
+        const formattedToday = formatDate(today);
+        datePicker.value = formattedToday;
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTasks();
+            loadSummary();
+            loadSyncSettings();
+            loadMonthlyGoals();
+            initAutoSync();
+        });
+        
+        // 格式化日期
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
+        // 获取当前月份的键名
+        function getCurrentMonthKey() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            return `${year}-${month}`;
+        }
+        
+        // 加载数据
+        function loadData() {
+            try {
+                const data = localStorage.getItem(STORAGE_KEY);
+                return data ? JSON.parse(data) : {
+                    dayTodos: {},
+                    todos: [],
+                    summaries: {}
+                };
+            } catch (error) {
+                console.error('加载数据失败:', error);
+                return {
+                    dayTodos: {},
+                    todos: [],
+                    summaries: {}
+                };
+            }
+        }
+        
+        // 保存数据
+        function saveData(data) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        }
+        
+        // 加载任务
+        function loadTasks() {
+            const data = loadData();
+            const currentType = taskTypeSelect.value;
+            const currentDate = datePicker.value;
+            
+            // 更新标题
+            updateTaskListTitle();
+            
+            // 清空列表
+            taskList.innerHTML = '';
+            
+            let tasks = [];
+            
+            if (currentType === 'dayTodo') {
+                // 加载当天的日程
+                tasks = data.dayTodos[currentDate] || [];
+            } else {
+                // 加载待办事项
+                tasks = data.todos;
+            }
+            
+            // 显示空状态或任务列表
+            if (tasks.length === 0) {
+                taskList.appendChild(emptyState);
+            } else {
+                // 渲染任务
+                tasks.forEach(task => {
+                    addTaskToUI(task);
+                });
+            }
+        }
+        
+        // 更新任务列表标题
+        function updateTaskListTitle() {
+            const currentType = taskTypeSelect.value;
+            const currentDate = datePicker.value;
+            
+            if (currentType === 'dayTodo') {
+                const [year, month, day] = currentDate.split('-');
+                taskListTitle.textContent = `${year}年${month}月${day}日 日程`;
+            } else {
+                taskListTitle.textContent = '待办事项';
+            }
+        }
+        
+        // 添加任务到UI
+        function addTaskToUI(task) {
+            const taskItem = document.createElement('div');
+            taskItem.className = 'task-item flex items-center p-3 border border-gray-200 rounded-lg';
+            taskItem.dataset.id = task.id;
+            taskItem.dataset.type = task.type;
+            taskItem.dataset.date = task.date;
+            
+            // 任务完成状态的样式
+            const completedClass = task.completed ? 'task-completed' : '';
+            
+            taskItem.innerHTML = `
+                <div class="flex items-center flex-1">
+                    <input type="checkbox" class="task-checkbox h-5 w-5 text-primary rounded mr-3" ${task.completed ? 'checked' : ''}>
+                    <div class="flex-1">
+                        <p class="${completedClass} task-content cursor-pointer">${task.content}</p>
+                        ${task.description ? `<p class="text-sm text-gray-500">${task.description}</p>` : ''}
+                    </div>
+                </div>
+                <button class="delete-task-btn text-gray-400 hover:text-danger ml-2">
+                    <i class="fa fa-trash"></i>
+                </button>
+            `;
+            
+            // 添加事件监听器
+            const checkbox = taskItem.querySelector('.task-checkbox');
+            checkbox.addEventListener('change', () => toggleTaskCompletion(task.id, task.type, task.date));
+            
+            const content = taskItem.querySelector('.task-content');
+            content.addEventListener('click', () => openEditModal(task));
+            
+            const deleteBtn = taskItem.querySelector('.delete-task-btn');
+            deleteBtn.addEventListener('click', () => deleteTask(task.id, task.type, task.date));
+            
+            taskList.appendChild(taskItem);
+        }
+        
+        // 添加新任务
+        function addTask() {
+            const content = taskInput.value.trim();
+            if (!content) return;
+            
+            const currentType = taskTypeSelect.value;
+            const currentDate = datePicker.value;
+            
+            const task = {
+                id: Date.now().toString(),
+                content: content,
+                description: '',
+                type: currentType,
+                date: currentType === 'dayTodo' ? currentDate : '',
+                completed: false,
+                createdAt: new Date().toISOString()
+            };
+            
+            const data = loadData();
+            
+            if (currentType === 'dayTodo') {
+                // 添加到当天日程
+                if (!data.dayTodos[currentDate]) {
+                    data.dayTodos[currentDate] = [];
+                }
+                data.dayTodos[currentDate].push(task);
+            } else {
+                // 添加到待办事项
+                data.todos.push(task);
+            }
+            
+            saveData(data);
+            
+            // 清空输入框
+            taskInput.value = '';
+            
+            // 重新加载任务
+            loadTasks();
+        }
+        
+        // 切换任务完成状态
+        function toggleTaskCompletion(taskId, taskType, taskDate) {
+            const data = loadData();
+            
+            if (taskType === 'dayTodo') {
+                // 切换当天日程的完成状态
+                const tasks = data.dayTodos[taskDate] || [];
+                const task = tasks.find(t => t.id === taskId);
+                if (task) {
+                    task.completed = !task.completed;
+                    data.dayTodos[taskDate] = tasks;
+                }
+            } else {
+                // 切换待办事项的完成状态
+                const task = data.todos.find(t => t.id === taskId);
+                if (task) {
+                    task.completed = !task.completed;
+                }
+            }
+            
+            saveData(data);
+            
+            // 重新加载任务
+            loadTasks();
+        }
+        
+        // 删除任务
+        function deleteTask(taskId, taskType, taskDate) {
+            const data = loadData();
+            
+            if (taskType === 'dayTodo') {
+                // 删除当天日程
+                let tasks = data.dayTodos[taskDate] || [];
+                tasks = tasks.filter(t => t.id !== taskId);
+                
+                if (tasks.length === 0) {
+                    delete data.dayTodos[taskDate];
+                } else {
+                    data.dayTodos[taskDate] = tasks;
+                }
+            } else {
+                // 删除待办事项
+                data.todos = data.todos.filter(t => t.id !== taskId);
+            }
+            
+            saveData(data);
+            
+            // 重新加载任务
+            loadTasks();
+        }
+        
+        // 打开编辑模态框
+        function openEditModal(task) {
+            document.getElementById('editTaskId').value = task.id;
+            document.getElementById('editTaskType').value = task.type;
+            document.getElementById('editTaskContent').value = task.content;
+            document.getElementById('editTaskDate').value = task.date;
+            document.getElementById('editTaskDescription').value = task.description || '';
+            document.getElementById('editTaskCompleted').checked = task.completed;
+            
+            editModal.classList.remove('hidden');
+        }
+        
+        // 关闭编辑模态框
+        function closeEditModal() {
+            editModal.classList.add('hidden');
+        }
+        
+        // 更新任务
+        function updateTask(e) {
+            e.preventDefault();
+            
+            const taskId = document.getElementById('editTaskId').value;
+            const taskType = document.getElementById('editTaskType').value;
+            const content = document.getElementById('editTaskContent').value.trim();
+            const newDate = document.getElementById('editTaskDate').value;
+            const description = document.getElementById('editTaskDescription').value.trim();
+            const completed = document.getElementById('editTaskCompleted').checked;
+            
+            if (!content) return;
+            
+            const data = loadData();
+            let task;
+            let shouldNavigateToNewDate = false;
+            let originalDate = '';
+            
+            if (taskType === 'dayTodo') {
+                // 找到原始日期和任务
+                for (const date in data.dayTodos) {
+                    const foundTask = data.dayTodos[date].find(t => t.id === taskId);
+                    if (foundTask) {
+                        task = foundTask;
+                        originalDate = date;
+                        break;
+                    }
+                }
+                
+                if (task) {
+                    // 如果日期发生变化，需要移动任务
+                    if (originalDate && originalDate !== newDate) {
+                        // 从原始日期移除任务
+                        data.dayTodos[originalDate] = data.dayTodos[originalDate].filter(t => t.id !== taskId);
+                        
+                        // 如果原始日期没有任务了，删除该日期
+                        if (data.dayTodos[originalDate].length === 0) {
+                            delete data.dayTodos[originalDate];
+                        }
+                        
+                        // 添加到新日期
+                        if (!data.dayTodos[newDate]) {
+                            data.dayTodos[newDate] = [];
+                        }
+                        data.dayTodos[newDate].push(task);
+                        
+                        // 更新任务日期
+                        task.date = newDate;
+                        
+                        // 设置导航标志
+                        shouldNavigateToNewDate = true;
+                    }
+                    
+                    // 更新其他任务属性
+                    task.content = content;
+                    task.description = description;
+                    task.completed = completed;
+                }
+            } else {
+                // 更新待办事项
+                task = data.todos.find(t => t.id === taskId);
+                
+                if (task) {
+                    task.content = content;
+                    task.description = description;
+                    task.completed = completed;
+                    
+                    // 如果设置了日期，将待办事项移动到对应日期的日程中
+                    if (newDate && newDate !== task.date) {
+                        // 从待办事项中移除
+                        data.todos = data.todos.filter(t => t.id !== taskId);
+                        
+                        // 添加到对应日期的日程中
+                        if (!data.dayTodos[newDate]) {
+                            data.dayTodos[newDate] = [];
+                        }
+                        
+                        // 更新任务类型和日期
+                        task.type = 'dayTodo';
+                        task.date = newDate;
+                        
+                        data.dayTodos[newDate].push(task);
+                        
+                        // 设置标记，需要导航到新日期
+                        shouldNavigateToNewDate = true;
+                    }
+                }
+            }
+            
+            saveData(data);
+            closeEditModal();
+            
+            // 如果需要导航到新日期，则更新日期选择器并重新加载任务
+            if (shouldNavigateToNewDate && newDate) {
+                datePicker.value = newDate;
+            }
+            
+            loadTasks();
+        }
+        
+        // 加载总结
+        function loadSummary() {
+            const data = loadData();
+            const currentDate = datePicker.value;
+            dailySummary.value = data.summaries[currentDate] || '';
+        }
+        
+        // 保存总结
+        function saveSummary() {
+            const data = loadData();
+            const currentDate = datePicker.value;
+            data.summaries[currentDate] = dailySummary.value;
+            saveData(data);
+            
+            // 显示保存成功提示
+            const originalText = saveSummaryBtn.textContent;
+            saveSummaryBtn.textContent = '已保存！';
+            saveSummaryBtn.classList.add('bg-success');
+            
+            setTimeout(() => {
+                saveSummaryBtn.textContent = originalText;
+                saveSummaryBtn.classList.remove('bg-success');
+            }, 2000);
+        }
+        
+        // 加载同步设置
+        function loadSyncSettings() {
+            try {
+                const settings = localStorage.getItem(SYNC_SETTINGS_KEY);
+                if (settings) {
+                    const { token, gist, autoSync } = JSON.parse(settings);
+                    if (token) githubToken.value = token;
+                    if (gist) gistId.value = gist;
+                    if (autoSync !== undefined) autoSyncToggle.checked = autoSync;
+                }
+            } catch (error) {
+                console.error('加载同步设置失败:', error);
+            }
+        }
+        
+        // 保存同步设置
+        function saveSyncSettings() {
+            const settings = {
+                token: githubToken.value,
+                gist: gistId.value,
+                autoSync: autoSyncToggle.checked
+            };
+            localStorage.setItem(SYNC_SETTINGS_KEY, JSON.stringify(settings));
+        }
+        
+        // 初始化自动同步
+        function initAutoSync() {
+            const settings = localStorage.getItem(SYNC_SETTINGS_KEY);
+            if (settings) {
+                const { autoSync } = JSON.parse(settings);
+                if (autoSync) {
+                    startAutoSync();
+                }
+            }
+        }
+        
+        // 开始自动同步
+        function startAutoSync() {
+            if (autoSyncInterval) {
+                clearInterval(autoSyncInterval);
+            }
+            
+            // 每15分钟自动同步一次
+            autoSyncInterval = setInterval(async () => {
+                if (githubToken.value && gistId.value) {
+                    await syncToGitHub();
+                }
+            }, AUTO_SYNC_INTERVAL_MINUTES * 60 * 1000);
+        }
+        
+        // 停止自动同步
+        function stopAutoSync() {
+            if (autoSyncInterval) {
+                clearInterval(autoSyncInterval);
+                autoSyncInterval = null;
+            }
+        }
+        
+        // 显示同步状态
+        function showSyncStatus(message, isSuccess = true) {
+            syncStatus.textContent = message;
+            syncStatus.className = `mt-3 text-sm text-center ${isSuccess ? 'text-success' : 'text-danger'}`;
+            syncStatus.classList.remove('hidden');
+            
+            setTimeout(() => {
+                syncStatus.classList.add('hidden');
+            }, 3000);
+        }
+        
+        // 同步到GitHub
+        async function syncToGitHub() {
+            saveSyncSettings();
+            const token = githubToken.value.trim();
+            const gistIdValue = gistId.value.trim();
+            
+            if (!token) {
+                showSyncStatus('请输入GitHub Token', false);
+                return;
+            }
+            
+            showSyncStatus('正在上传...');
+            
+            const data = loadData();
+            // 同时保存当月目标数据
+            const monthlyGoalsData = loadMonthlyGoals();
+            data.monthlyGoals = monthlyGoalsData;
+            
+            const syncData = {
+                description: '日程安排数据',
+                public: false,
+                files: {
+                    'schedule-data.json': {
+                        content: JSON.stringify(data, null, 2)
+                    }
+                }
+            };
+            
+            try {
+                let response;
+                if (gistIdValue) {
+                    response = await fetch(`https://api.github.com/gists/${gistIdValue}`, {
+                        method: 'PATCH',
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(syncData)
+                    });
+                } else {
+                    response = await fetch('https://api.github.com/gists', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(syncData)
+                    });
+                }
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    if (!gistIdValue) {
+                        gistId.value = result.id;
+                        saveSyncSettings();
+                    }
+                    showSyncStatus('上传成功！');
+                } else {
+                    throw new Error('上传失败');
+                }
+            } catch (error) {
+                showSyncStatus('上传失败，请检查您的Token和Gist ID', false);
+            }
+        }
+        
+        // 从GitHub同步
+        async function syncFromGitHub() {
+            saveSyncSettings();
+            const token = githubToken.value.trim();
+            const gistIdValue = gistId.value.trim();
+            
+            if (!token || !gistIdValue) {
+                showSyncStatus('请输入GitHub Token和Gist ID', false);
+                return;
+            }
+            
+            showSyncStatus('正在下载...');
+            
+            try {
+                const response = await fetch(`https://api.github.com/gists/${gistIdValue}`, {
+                    headers: {
+                        'Authorization': `token ${token}`
+                    }
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    const fileContent = result.files['schedule-data.json']?.content;
+                    
+                    if (fileContent) {
+                        const remoteData = JSON.parse(fileContent);
+                        saveData(remoteData);
+                        
+                        // 恢复当月目标数据
+                        if (remoteData.monthlyGoals) {
+                            saveMonthlyGoals(remoteData.monthlyGoals);
+                        }
+                        
+                        loadTasks();
+                        loadSummary();
+                        loadMonthlyGoals();
+                        showSyncStatus('下载成功！');
+                    } else {
+                        showSyncStatus('未找到数据文件', false);
+                    }
+                } else {
+                    throw new Error('下载失败');
+                }
+            } catch (error) {
+                showSyncStatus('下载失败，请检查您的Token和Gist ID', false);
+            }
+        }
+        
+        // 加载当月目标
+        function loadMonthlyGoals() {
+            try {
+                const data = localStorage.getItem(MONTHLY_GOALS_KEY);
+                const monthlyGoals = data ? JSON.parse(data) : {};
+                const currentMonthKey = getCurrentMonthKey();
+                const currentGoals = monthlyGoals[currentMonthKey] || [];
+                
+                // 清空列表，只保留第一个空输入框
+                goalsList.innerHTML = '';
+                
+                if (currentGoals.length === 0) {
+                    // 如果没有目标，添加一个空输入框
+                    addEmptyGoalInput();
+                } else {
+                    // 渲染所有目标
+                    currentGoals.forEach((goal, index) => {
+                        addGoalToUI(goal, index);
+                    });
+                    // 最后添加一个空输入框
+                    addEmptyGoalInput();
+                }
+                
+                return monthlyGoals;
+            } catch (error) {
+                console.error('加载当月目标失败:', error);
+                return {};
+            }
+        }
+        
+        // 保存当月目标
+        function saveMonthlyGoals(monthlyGoals) {
+            localStorage.setItem(MONTHLY_GOALS_KEY, JSON.stringify(monthlyGoals));
+        }
+        
+        // 添加空的目标输入框
+        function addEmptyGoalInput() {
+            const goalItem = document.createElement('div');
+            goalItem.className = 'goal-item flex items-center';
+            goalItem.innerHTML = `
+                <input type="text" class="goal-input flex-1 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary rounded-lg" placeholder="添加当月目标...">
+            `;
+            
+            const input = goalItem.querySelector('.goal-input');
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && input.value.trim()) {
+                    handleGoalInputEnter(input);
+                }
+            });
+            
+            goalsList.appendChild(goalItem);
+            // 自动聚焦到新添加的输入框
+            input.focus();
+        }
+        
+        // 添加目标到UI
+        function addGoalToUI(goal, index) {
+            const goalItem = document.createElement('div');
+            goalItem.className = 'goal-item flex items-center';
+            goalItem.innerHTML = `
+                <input type="text" class="goal-input flex-1 px-3 py-2 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary rounded-lg" value="${goal}">
+                <button class="delete-goal-btn text-gray-400 hover:text-danger ml-2 px-2 py-1 rounded-full">
+                    <i class="fa fa-times"></i>
+                </button>
+            `;
+            
+            const input = goalItem.querySelector('.goal-input');
+            const deleteBtn = goalItem.querySelector('.delete-goal-btn');
+            
+            input.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    handleGoalInputEnter(input, index);
+                }
+            });
+            
+            input.addEventListener('blur', () => {
+                if (input.value.trim() === '') {
+                    deleteGoal(index);
+                } else {
+                    updateGoal(index, input.value.trim());
+                }
+            });
+            
+            deleteBtn.addEventListener('click', () => {
+                deleteGoal(index);
+            });
+            
+            goalsList.appendChild(goalItem);
+        }
+        
+        // 处理目标输入框的回车事件
+        function handleGoalInputEnter(input, index) {
+            const value = input.value.trim();
+            if (!value) return;
+            
+            if (index !== undefined) {
+                // 更新已有目标
+                updateGoal(index, value);
+            } else {
+                // 添加新目标
+                addNewGoal(value);
+            }
+            
+            // 确保最后有一个空输入框
+            const lastItem = goalsList.lastElementChild;
+            const lastInput = lastItem.querySelector('.goal-input');
+            
+            if (lastInput && lastInput.value.trim() !== '') {
+                addEmptyGoalInput();
+            } else if (!lastItem) {
+                addEmptyGoalInput();
+            }
+        }
+        
+        // 添加新目标
+        function addNewGoal(content) {
+            const monthlyGoals = loadMonthlyGoals();
+            const currentMonthKey = getCurrentMonthKey();
+            
+            if (!monthlyGoals[currentMonthKey]) {
+                monthlyGoals[currentMonthKey] = [];
+            }
+            
+            monthlyGoals[currentMonthKey].push(content);
+            saveMonthlyGoals(monthlyGoals);
+            
+            // 重新加载目标
+            loadMonthlyGoals();
+        }
+        
+        // 更新目标
+        function updateGoal(index, content) {
+            const monthlyGoals = loadMonthlyGoals();
+            const currentMonthKey = getCurrentMonthKey();
+            
+            if (monthlyGoals[currentMonthKey] && monthlyGoals[currentMonthKey][index] !== undefined) {
+                monthlyGoals[currentMonthKey][index] = content;
+                saveMonthlyGoals(monthlyGoals);
+            }
+        }
+        
+        // 删除目标
+        function deleteGoal(index) {
+            const monthlyGoals = loadMonthlyGoals();
+            const currentMonthKey = getCurrentMonthKey();
+            
+            if (monthlyGoals[currentMonthKey] && monthlyGoals[currentMonthKey][index] !== undefined) {
+                monthlyGoals[currentMonthKey].splice(index, 1);
+                saveMonthlyGoals(monthlyGoals);
+                
+                // 重新加载目标
+                loadMonthlyGoals();
+            }
+        }
+        
+        // 切换当月目标的显示/隐藏
+        function toggleMonthlyGoals() {
+            monthlyGoalsContainer.classList.toggle('hidden');
+            const isHidden = monthlyGoalsContainer.classList.contains('hidden');
+            
+            if (isHidden) {
+                toggleGoalsBtn.innerHTML = '<i class="fa fa-chevron-down mr-1"></i>展开';
+            } else {
+                toggleGoalsBtn.innerHTML = '<i class="fa fa-chevron-down mr-1"></i>展开/收起';
+            }
+        }
+        
+        // 事件监听器
+        taskTypeSelect.addEventListener('change', loadTasks);
+        datePicker.addEventListener('change', () => {
+            loadTasks();
+            loadSummary();
+        });
+        
+        // 日期导航按钮事件
+        document.getElementById('prevDayBtn').addEventListener('click', () => {
+            const currentDate = new Date(datePicker.value);
+            currentDate.setDate(currentDate.getDate() - 1);
+            datePicker.value = formatDate(currentDate);
+            loadTasks();
+            loadSummary();
+        });
+        
+        document.getElementById('nextDayBtn').addEventListener('click', () => {
+            const currentDate = new Date(datePicker.value);
+            currentDate.setDate(currentDate.getDate() + 1);
+            datePicker.value = formatDate(currentDate);
+            loadTasks();
+            loadSummary();
+        });
+        
+        // 清除日期按钮事件
+        document.getElementById('removeTaskDateBtn').addEventListener('click', () => {
+            const taskId = document.getElementById('editTaskId').value;
+            const taskType = document.getElementById('editTaskType').value;
+            const currentDate = document.getElementById('editTaskDate').value;
+            
+            // 如果任务当前有日期
+            if (currentDate && taskType === 'dayTodo') {
+                const data = loadData();
+                const tasks = data.dayTodos[currentDate] || [];
+                const task = tasks.find(t => t.id === taskId);
+                
+                if (task) {
+                    // 从日期日程中移除
+                    data.dayTodos[currentDate] = tasks.filter(t => t.id !== taskId);
+                    
+                    // 如果该日期没有任务了，删除该日期的键
+                    if (data.dayTodos[currentDate].length === 0) {
+                        delete data.dayTodos[currentDate];
+                    }
+                    
+                    // 更新任务类型和日期
+                    task.type = 'todo';
+                    task.date = '';
+                    
+                    // 添加到待办事项
+                    data.todos.push(task);
+                    
+                    saveData(data);
+                    
+                    // 清空日期输入框
+                    document.getElementById('editTaskDate').value = '';
+                    
+                    // 关闭模态框并重新加载任务
+                    closeEditModal();
+                    loadTasks();
+                }
+            }
+        });
+        
+        githubBtn.addEventListener('click', () => {
+            githubSyncModule.classList.toggle('hidden');
+        });
+        
+        closeGithubBtn.addEventListener('click', () => {
+            githubSyncModule.classList.add('hidden');
+        });
+        
+        addTaskBtn.addEventListener('click', addTask);
+        
+        taskInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                addTask();
+            }
+        });
+        
+        closeEditModalBtn.addEventListener('click', closeEditModal);
+        
+        cancelEditBtn.addEventListener('click', closeEditModal);
+        
+        editForm.addEventListener('submit', updateTask);
+        
+        saveSummaryBtn.addEventListener('click', saveSummary);
+        
+        syncToGithubBtn.addEventListener('click', syncToGitHub);
+        
+        syncFromGithubBtn.addEventListener('click', syncFromGitHub);
+        
+        // 自动同步开关事件
+        autoSyncToggle.addEventListener('change', () => {
+            saveSyncSettings();
+            if (autoSyncToggle.checked) {
+                startAutoSync();
+                showSyncStatus('自动同步已开启');
+            } else {
+                stopAutoSync();
+                showSyncStatus('自动同步已关闭');
+            }
+        });
+        
+        // 当月目标展开/收起事件
+        toggleGoalsBtn.addEventListener('click', toggleMonthlyGoals);
+        
+        // 点击模态框外部关闭
+        window.addEventListener('click', (e) => {
+            if (e.target === editModal) {
+                closeEditModal();
+            }
+        });
+    </script>
+</body>
+</html>
