@@ -91,7 +91,7 @@
             </div>
             <div class="space-y-4">
                 <div>
-                    <input type="password" id="passwordInput" placeholder="请输入密码" 
+                    <input type="password" id="passwordInput" placeholder="请输入密码20251022" 
                         class="w-full px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary rounded-lg">
                 </div>
                 <div id="passwordError" class="text-danger text-sm hidden">密码错误，请重试</div>
@@ -106,7 +106,7 @@
     <div id="mainContent" class="max-w-4xl mx-auto bg-[#FFFFFF] rounded-xl shadow-lg p-6 md:p-8 hidden">
         <header class="mb-8 text-center">
             <h1 class="text-2xl md:text-3xl font-bold text-gray-800">TODO 清单</h1>
-            <p class="text-secondary mt-2">在今天这一天中，最低限度是必须向前跨进一步2025102201</p>
+            <p class="text-secondary mt-2">在今天这一天中，最低限度是必须向前跨进一步</p>
         </header>
         
         <!-- 第一行模块 -->
@@ -890,148 +890,221 @@
             showSyncStatus('正在下载...');
             
             try {
-                console.log('开始从GitHub获取数据，Gist ID:', gistIdValue);
-                const response = await fetch(`https://api.github.com/gists/${gistIdValue}`, {
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
-                });
+                console.log('===========================================');
+                console.log('开始从GitHub同步数据');
+                console.log('Gist ID:', gistIdValue);
+                console.log('Token 长度:', token.length, '个字符');
+                
+                // 尝试不使用Authorization头获取公开Gist
+                let response;
+                try {
+                    console.log('尝试使用Authorization头获取Gist...');
+                    response = await fetch(`https://api.github.com/gists/${gistIdValue}`, {
+                        headers: {
+                            'Authorization': `token ${token}`,
+                            'Accept': 'application/vnd.github.v3+json',
+                            'User-Agent': 'TODO-List-App'
+                        },
+                        method: 'GET'
+                    });
+                } catch (authError) {
+                    console.error('使用Authorization头出错，尝试不使用Authorization头...', authError);
+                    // 尝试不使用Authorization头（公开Gist）
+                    response = await fetch(`https://api.github.com/gists/${gistIdValue}`, {
+                        headers: {
+                            'Accept': 'application/vnd.github.v3+json',
+                            'User-Agent': 'TODO-List-App'
+                        },
+                        method: 'GET'
+                    });
+                }
                 
                 // 记录响应状态和头信息
-                console.log('GitHub API 响应状态:', response.status);
-                console.log('GitHub API 响应头:', Object.fromEntries(response.headers.entries()));
+                console.log('GitHub API 响应状态:', response.status, response.statusText);
+                console.log('GitHub API 响应头:');
+                for (const [key, value] of response.headers.entries()) {
+                    console.log(`  ${key}: ${value}`);
+                }
                 
                 // 获取原始响应文本以便调试
                 const rawResponse = await response.clone().text();
-                console.log('原始响应内容:', rawResponse);
+                console.log('原始响应内容长度:', rawResponse.length, '个字符');
+                console.log('原始响应内容预览:', rawResponse.substring(0, 1000) + (rawResponse.length > 1000 ? '...' : ''));
                 
                 if (response.ok) {
-                    const result = await response.json();
-                    console.log('Gist 数据结构:', JSON.stringify(Object.keys(result), null, 2));
-                    console.log('Gist 描述:', result.description);
-                    console.log('Gist 是否公开:', result.public);
-                    
-                    // 检查是否有files属性
-                    if (!result.files) {
-                        console.error('Gist 数据中没有files属性');
-                        showSyncStatus('Gist 数据格式异常，缺少文件信息', false);
-                        return;
-                    }
-                    
-                    const files = Object.keys(result.files);
-                    console.log('Gist 中的文件数量:', files.length);
-                    console.log('Gist 中的文件列表:', files);
-                    
-                    if (files.length === 0) {
-                        console.log('Gist 中没有文件');
-                        showSyncStatus('Gist 中没有找到任何文件', false);
-                        return;
-                    }
-                    
-                    // 定义可能的文件名列表
-                    const possibleFilenames = ['schedule-data.json', 'todo-data.json', 'data.json', 'tasks.json'];
-                    let fileContent = null;
-                    let foundFile = null;
-                    
-                    // 1. 首先尝试查找可能的已知文件名
-                    for (const filename of possibleFilenames) {
-                        if (result.files[filename] && result.files[filename].content) {
-                            fileContent = result.files[filename].content;
-                            foundFile = filename;
-                            console.log(`找到已知文件名: ${filename}`);
-                            break;
-                        }
-                    }
-                    
-                    // 2. 如果没有找到已知文件名，尝试查找任何带有JSON内容的文件
-                    if (!fileContent) {
-                        console.log('未找到已知文件名，尝试遍历所有文件查找JSON内容');
+                    try {
+                        const result = await response.json();
+                        console.log('解析Gist数据成功');
+                        console.log('Gist 数据结构:', Object.keys(result));
+                        console.log('Gist 描述:', result.description || '无描述');
+                        console.log('Gist ID:', result.id);
+                        console.log('Gist 创建时间:', result.created_at);
+                        console.log('Gist 更新时间:', result.updated_at);
                         
-                        // 遍历所有文件
+                        // 检查是否有files属性
+                        if (!result.files) {
+                            console.error('❌ Gist 数据中没有files属性');
+                            showSyncStatus('Gist 数据格式异常，缺少文件信息', false);
+                            return;
+                        }
+                        
+                        const files = Object.keys(result.files);
+                        console.log(`✅ 找到 ${files.length} 个文件`);
+                        console.log('文件列表:', files);
+                        
+                        if (files.length === 0) {
+                            console.error('❌ Gist 中没有文件');
+                            showSyncStatus('Gist 中没有找到任何文件', false);
+                            return;
+                        }
+                        
+                        // 详细记录每个文件的信息
+                        console.log('文件详细信息:');
                         for (const [filename, file] of Object.entries(result.files)) {
-                            console.log('检查文件:', filename);
-                            
-                            // 检查文件是否有content属性
-                            if (!file || typeof file.content !== 'string') {
-                                console.log(`文件 ${filename} 没有有效的content属性`);
-                                continue;
+                            console.log(`  - ${filename}:`);
+                            console.log(`    类型: ${file.type}`);
+                            console.log(`    语言: ${file.language || '未知'}`);
+                            console.log(`    有content: ${!!file.content}`);
+                            console.log(`    content类型: ${typeof file.content}`);
+                            if (file.content) {
+                                console.log(`    content长度: ${file.content.length} 字符`);
+                                console.log(`    content预览: ${file.content.substring(0, 100)}${file.content.length > 100 ? '...' : ''}`);
                             }
-                            
-                            // 检查内容是否为空
-                            if (!file.content.trim()) {
-                                console.log(`文件 ${filename} 内容为空`);
-                                continue;
+                        }
+                        
+                        // 尝试直接保存第一个可用文件的内容作为测试
+                        console.log('\n🔍 尝试查找并使用任何可用的文件内容...');
+                        let fileContent = null;
+                        let foundFile = null;
+                        
+                        // 1. 首先尝试所有可能的文件名
+                        const possibleFilenames = [
+                            'schedule-data.json', 'todo-data.json', 'data.json', 'tasks.json',
+                            'new-schedule-app-data.json', 'todo-list.json', 'schedule.json'
+                        ];
+                        
+                        for (const filename of possibleFilenames) {
+                            if (result.files[filename] && result.files[filename].content) {
+                                fileContent = result.files[filename].content;
+                                foundFile = filename;
+                                console.log(`✅ 找到匹配的文件名: ${filename}`);
+                                break;
                             }
+                        }
+                        
+                        // 2. 如果没有找到匹配的文件名，尝试任何文件
+                        if (!fileContent) {
+                            console.log('未找到匹配的文件名，尝试使用任何有内容的文件...');
                             
-                            console.log(`文件 ${filename} 内容长度: ${file.content.length} 字符`);
-                            
-                            try {
-                                // 尝试解析内容以验证它是否为有效的JSON数据
-                                console.log(`尝试解析文件 ${filename} 的内容`);
-                                const parsed = JSON.parse(file.content);
-                                console.log(`成功解析文件 ${filename}，数据类型:`, typeof parsed);
+                            // 遍历所有文件
+                            for (const [filename, file] of Object.entries(result.files)) {
+                                console.log(`尝试文件: ${filename}`);
                                 
-                                // 简单验证是否为对象或数组
-                                if (typeof parsed === 'object' && parsed !== null) {
+                                if (file && file.content && typeof file.content === 'string') {
                                     fileContent = file.content;
                                     foundFile = filename;
-                                    console.log(`找到有效的JSON文件: ${filename}`);
+                                    console.log(`📄 选择文件: ${filename}`);
                                     break;
-                                } else {
-                                    console.log(`文件 ${filename} 内容是JSON但不是有效的数据对象`);
                                 }
-                            } catch (e) {
-                                console.log(`文件 ${filename} 不是有效的JSON:`, e.message);
-                                // 不是有效的JSON，继续查找
-                                continue;
                             }
                         }
-                    }
-                    
-                    if (fileContent) {
-                        try {
-                            const remoteData = JSON.parse(fileContent);
-                            console.log('成功解析远程数据，数据键:', Object.keys(remoteData));
+                        
+                        if (fileContent) {
+                            console.log(`✅ 找到文件: ${foundFile}`);
+                            console.log(`文件内容长度: ${fileContent.length} 字符`);
                             
-                            saveData(remoteData);
-                            
-                            // 恢复当月目标数据
-                            if (remoteData.monthlyGoals) {
-                                console.log('发现并恢复当月目标数据');
-                                saveMonthlyGoals(remoteData.monthlyGoals);
+                            try {
+                                // 尝试解析JSON
+                                const remoteData = JSON.parse(fileContent);
+                                console.log('✅ 成功解析JSON数据');
+                                console.log('数据类型:', typeof remoteData);
+                                
+                                if (typeof remoteData === 'object' && remoteData !== null) {
+                                    console.log('数据键:', Object.keys(remoteData));
+                                    
+                                    // 保存数据
+                                    saveData(remoteData);
+                                    console.log('✅ 数据保存成功');
+                                    
+                                    // 恢复当月目标数据
+                                    if (remoteData.monthlyGoals) {
+                                        console.log('✅ 发现并恢复当月目标数据');
+                                        saveMonthlyGoals(remoteData.monthlyGoals);
+                                    }
+                                    
+                                    // 重新加载
+                                    loadTasks();
+                                    loadSummary();
+                                    loadMonthlyGoals();
+                                    console.log('✅ 数据加载完成');
+                                    
+                                    showSyncStatus(`下载成功！从文件 ${foundFile} 恢复数据`, true);
+                                } else {
+                                    console.error('❌ 数据不是有效的对象');
+                                    showSyncStatus('数据格式错误，不是有效的数据对象', false);
+                                }
+                            } catch (parseError) {
+                                console.error('❌ JSON解析失败:', parseError);
+                                console.error('错误内容预览:', fileContent.substring(0, 200));
+                                
+                                // 尝试修复并保存（即使不是有效的JSON）
+                                console.log('尝试保存原始内容以供检查...');
+                                try {
+                                    // 创建一个包含原始内容的对象
+                                    const backupData = {
+                                        originalContent: fileContent,
+                                        filename: foundFile,
+                                        timestamp: new Date().toISOString()
+                                    };
+                                    localStorage.setItem('backup-gist-data', JSON.stringify(backupData));
+                                    console.log('✅ 原始内容已保存到本地存储，键: backup-gist-data');
+                                } catch (e) {
+                                    console.error('无法保存备份数据:', e);
+                                }
+                                
+                                showSyncStatus('数据格式错误，无法解析JSON', false);
                             }
-                            
-                            loadTasks();
-                            loadSummary();
-                            loadMonthlyGoals();
-                            showSyncStatus(`下载成功！从文件 ${foundFile} 恢复数据`);
-                        } catch (parseError) {
-                            console.error('解析数据失败:', parseError);
-                            console.error('无法解析的内容前500字符:', fileContent.substring(0, 500));
-                            showSyncStatus('数据格式错误，无法解析', false);
+                        } else {
+                            console.error('❌ 未找到任何有内容的文件');
+                            showSyncStatus('未找到有效的数据文件，请先上传数据', false);
                         }
-                    } else {
-                        console.error('未找到有效的数据文件，所有文件检查完毕');
-                        showSyncStatus('未找到有效的数据文件', false);
+                    } catch (parseResponseError) {
+                        console.error('❌ 解析Gist响应失败:', parseResponseError);
+                        console.error('原始响应:', rawResponse);
+                        showSyncStatus('无法解析GitHub返回的数据', false);
                     }
                 } else {
-                    // 获取错误详情
+                    console.error(`❌ GitHub API 返回错误: ${response.status} ${response.statusText}`);
+                    
                     try {
                         const errorDetails = await response.json();
-                        console.error('GitHub API 错误详情:', errorDetails);
-                        const errorMessage = errorDetails.message || errorDetails.documentation_url || `状态码: ${response.status}`;
+                        console.error('错误详情:', errorDetails);
+                        
+                        // 根据错误类型显示具体信息
+                        let errorMessage;
+                        if (errorDetails.message) {
+                            errorMessage = errorDetails.message;
+                        } else if (errorDetails.documentation_url) {
+                            errorMessage = `请查看GitHub文档: ${errorDetails.documentation_url}`;
+                        } else {
+                            errorMessage = `状态码: ${response.status}`;
+                        }
+                        
+                        console.error('错误消息:', errorMessage);
                         showSyncStatus(`下载失败: ${errorMessage}`, false);
                     } catch (jsonError) {
-                        console.error('无法解析错误响应:', jsonError);
+                        console.error('❌ 无法解析错误响应:', jsonError);
                         console.error('原始错误响应:', rawResponse);
-                        showSyncStatus(`下载失败: 服务器返回错误 ${response.status}`, false);
+                        showSyncStatus(`下载失败: 服务器返回错误 ${response.status} ${response.statusText}`, false);
                     }
                 }
             } catch (error) {
-                console.error('同步过程发生错误:', error);
+                console.error('❌ 同步过程发生错误:', error);
                 console.error('错误堆栈:', error.stack);
-                showSyncStatus(`下载失败: ${error.message || '网络错误'}`);
+                showSyncStatus(`下载失败: ${error.message || '未知错误'}`, false);
+            } finally {
+                console.log('===========================================');
+                console.log('同步过程结束');
             }
         }
         
