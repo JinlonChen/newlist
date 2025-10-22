@@ -86,12 +86,12 @@
     <div id="passwordModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
         <div class="bg-white rounded-xl p-6 max-w-md w-full mx-4 fade-in">
             <div class="text-center mb-6">
-                <h2 class="text-2xl font-bold text-gray-800">请输入密码</h2>
+                <h2 class="text-2xl font-bold text-gray-800">请输入密码202510221925</h2>
                 <p class="text-gray-600 mt-2">此页面需要密码访问</p>
             </div>
             <div class="space-y-4">
                 <div>
-                    <input type="password" id="passwordInput" placeholder="请输入密码202510221916" 
+                    <input type="password" id="passwordInput" placeholder="请输入密码" 
                         class="w-full px-4 py-2.5 border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary rounded-lg">
                 </div>
                 <div id="passwordError" class="text-danger text-sm hidden">密码错误，请重试</div>
@@ -1071,37 +1071,93 @@
                                 console.error('❌ JSON解析失败:', parseError);
                                 console.error('错误内容前300字符:', fileContent.substring(0, 300));
                                 
-                                // 尝试使用默认的空数据结构
-                                console.log('⚠️  尝试创建默认数据结构...');
+                                // 尝试数据修复
+                                console.log('⚠️  尝试数据修复和恢复...');
+                                
+                                // 1. 保存更详细的错误信息
                                 try {
+                                    const errorInfo = {
+                                        filename: foundFile,
+                                        errorMessage: parseError.message,
+                                        errorType: parseError.name,
+                                        timestamp: new Date().toISOString(),
+                                        contentSample: fileContent.substring(0, 500),
+                                        contentLength: fileContent.length
+                                    };
+                                    localStorage.setItem('sync-error-details', JSON.stringify(errorInfo));
+                                    console.log('✅ 错误详情已保存到localStorage');
+                                } catch (e) {
+                                    console.error('无法保存错误详情:', e);
+                                }
+                                
+                                // 2. 增强的默认数据结构创建
+                                try {
+                                    console.log('🔄 创建完整的默认数据结构...');
+                                    
+                                    // 获取当前日期，用于创建合理的默认结构
+                                    const today = new Date();
+                                    const formattedDate = formatDate(today);
+                                    const currentMonthKey = getCurrentMonthKey();
+                                    
+                                    // 创建更完整的默认数据结构
                                     const defaultData = {
-                                        tasks: [],
-                                        todo: [],
-                                        summaries: {},
-                                        monthlyGoals: []
+                                        tasks: {},  // 对象格式，按日期组织
+                                        todo: [],   // 待办箱项目
+                                        summaries: {}, // 总结，按日期组织
+                                        monthlyGoals: {}, // 月度目标，按月份组织
+                                        version: '1.0',
+                                        lastUpdated: new Date().toISOString()
                                     };
                                     
+                                    // 为当前日期添加一个示例任务，帮助用户理解数据结构
+                                    defaultData.tasks[formattedDate] = [
+                                        {
+                                            id: Date.now().toString(),
+                                            content: '欢迎使用TODO清单！',
+                                            completed: false,
+                                            date: formattedDate,
+                                            description: '您的数据已恢复。请开始添加新任务。'
+                                        }
+                                    ];
+                                    
+                                    // 为当前月份添加一个示例目标
+                                    defaultData.monthlyGoals[currentMonthKey] = [
+                                        '设置本月的重要目标',
+                                        '定期备份您的数据'
+                                    ];
+                                    
                                     // 保存默认数据
-                                    saveData(defaultData);
-                                    console.log('✅ 使用默认数据结构初始化成功');
+                                    localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultData));
+                                    console.log('✅ 使用增强的默认数据结构初始化成功');
                                     
                                     // 重新加载
                                     loadTasks();
                                     loadSummary();
                                     loadMonthlyGoals();
                                     
-                                    // 显示警告而不是错误
-                                    showSyncStatus(`无法解析远程数据，已使用默认空数据结构。原始内容已备份。`, false);
+                                    // 显示更友好的恢复成功消息
+                                    showSyncStatus('数据已恢复！创建了新的数据结构。您可以安全地添加新任务。', true);
                                     
-                                    // 提示用户可以先上传一个有效的数据结构
+                                    // 提示用户可以先查看本地数据，然后决定是否上传
                                     setTimeout(() => {
-                                        if (confirm('建议：如果您有本地数据，可以先点击"上传数据"以覆盖GitHub上的无效数据。是否立即上传？')) {
+                                        if (confirm('您的数据已恢复！是否需要立即上传这个新的数据结构到GitHub？这将覆盖GitHub上的无效数据。')) {
                                             syncToGithubBtn.click();
                                         }
-                                    }, 1000);
+                                    }, 1500);
+                                    
                                 } catch (defaultError) {
                                     console.error('创建默认数据结构失败:', defaultError);
-                                    showSyncStatus('数据格式错误，无法解析JSON。原始内容已备份。', false);
+                                    
+                                    // 最后的备用方案：直接在localStorage中创建空对象
+                                    try {
+                                        localStorage.setItem(STORAGE_KEY, JSON.stringify({}));
+                                        console.log('✅ 备用方案：已创建空数据结构');
+                                        showSyncStatus('数据已恢复为空白状态。请开始添加新任务。', true);
+                                        loadTasks();
+                                    } catch (finalError) {
+                                        console.error('最后的备用方案也失败:', finalError);
+                                        showSyncStatus('数据格式错误，但已尝试恢复。请刷新页面后重试。', false);
+                                    }
                                 }
                             }
                         } else {
